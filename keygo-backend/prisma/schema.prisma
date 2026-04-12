@@ -1,0 +1,425 @@
+// =============================================================================
+// KeyGo - Prisma Schema Completo
+// Fase 1: Arquitectura base con todas las tablas del sistema
+// Versión: 1.0.0
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum Role {
+  OWNER  // Propietario de llave
+  STORE  // Punto aliado / tienda
+  ADMIN  // Administrador KeyGo
+}
+
+enum KeyStatus {
+  WAITING_DEPOSIT // Esperando primer depósito
+  DEPOSITED       // Depositada en el punto aliado
+  IN_USE          // Fuera de la tienda, en uso
+  DELETED         // Eliminada (borrado lógico)
+}
+
+enum PlanType {
+  MONTHLY      // Suscripción mensual
+  PAY_PER_USE  // Pago por uso
+}
+
+enum TagType {
+  NFC  // Llavero NFC físico
+}
+
+enum TagStatus {
+  ACTIVE    // Llavero activo y asignado
+  REPLACED  // Reemplazado por pérdida o daño
+  INACTIVE  // Desactivado
+}
+
+enum CodeMode {
+  SINGLE_USE  // Código de un solo uso (default)
+  REUSABLE    // Código reutilizable (máx. 2 activos)
+}
+
+enum PickupCodeStatus {
+  ACTIVE           // Código activo y listo para usar
+  USED             // Ya fue utilizado
+  CANCELLED        // Cancelado por el propietario
+  PENDING_SCHEDULE // Esperando hora de activación
+}
+
+enum DepositCodeStatus {
+  ACTIVE  // Código activo
+  USED    // Ya fue utilizado
+  EXPIRED // Expirado
+}
+
+enum MovementType {
+  DEPOSIT  // Depósito de llave en tienda
+  PICKUP   // Recogida de llave de tienda
+}
+
+enum MovementMethod {
+  DEPOSIT_CODE  // Via código de depósito
+  PICKUP_CODE   // Via código de recogida
+  NFC           // Via escaneo NFC
+  ADMIN_REMOTE  // Acción remota del administrador
+}
+
+enum PaymentType {
+  MONTHLY_SUBSCRIPTION  // Suscripción mensual
+  PAY_PER_USE           // Pago por uso
+  DEPOSIT_CHARGE        // Cobro al momento del depósito
+}
+
+enum PaymentStatus {
+  PENDING   // Pendiente de procesamiento
+  PAID      // Pago exitoso
+  FAILED    // Pago fallido
+  REFUNDED  // Reembolsado
+}
+
+enum PayoutStatus {
+  PENDING   // Pendiente de aprobar
+  APPROVED  // Aprobado para pago
+  PAID      // Pagado al punto aliado
+}
+
+enum KeyEventType {
+  CREATED                 // Llave creada
+  STATUS_CHANGED          // Estado de la llave cambió
+  PICKUP_CODE_CREATED     // Código de recogida generado
+  PICKUP_CODE_CANCELLED   // Código de recogida cancelado
+  DEPOSIT_CODE_GENERATED  // Código de depósito generado
+  TAG_ASSIGNED            // Llavero NFC asignado
+  TAG_REPLACED            // Llavero NFC reemplazado
+  DELETED                 // Llave eliminada
+  ADMIN_ACTION            // Intervención administrativa
+}
+
+// =============================================================================
+// TABLA: users
+// Módulo 1 - Usuarios y Acceso
+// Gestiona propietarios, puntos aliados y administradores
+// =============================================================================
+model User {
+  id            String   @id @default(uuid())
+  full_name     String
+  email         String   @unique
+  phone         String?
+  password_hash String
+  role          Role     @default(OWNER)
+  status        Boolean  @default(true)   // false = cuenta desactivada
+
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relaciones
+  owned_keys       Key[]             @relation("KeyOwner")
+  payments         Payment[]
+  payment_methods  PaymentMethod[]
+  admin_actions    AdminAction[]     @relation("AdminUser")
+
+  @@map("users")
+}
+
+// =============================================================================
+// TABLA: stores
+// Módulo 8 - Puntos Aliados
+// Información operativa de las tiendas asociadas a KeyGo
+// =============================================================================
+model Store {
+  id               String   @id @default(uuid())
+  store_name       String
+  address          String
+  city             String
+  main_phone       String
+  owner_phone      String?
+  whatsapp         String?
+  email            String?
+  opening_hours    String?  // Ej: "Lun-Sab 8am-6pm"
+  google_maps_link String?
+  instructions     String?  // Instrucciones especiales para llegar
+  status           Boolean  @default(true)
+
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // Relaciones
+  keys             Key[]
+  key_movements    KeyMovement[]
+  store_payouts    StorePayout[]
+
+  @@map("stores")
+}
+
+// =============================================================================
+// TABLA: keys
+// Módulo 2 - Llaves
+// Entidad principal: cada llave registrada en el sistema
+// =============================================================================
+model Key {
+  id            String    @id @default(uuid())
+  owner_user_id String
+  store_id      String?
+  key_name      String
+  key_photo_url String?   // URL de la foto de la llave (S3/R2/Supabase Storage)
+  plan_type     PlanType  @default(MONTHLY)
+  key_status    KeyStatus @default(WAITING_DEPOSIT)
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime? // Borrado lógico — el historial se conserva siempre
+
+  // Relaciones
+  owner          User          @relation("KeyOwner", fields: [owner_user_id], references: [id])
+  store          Store?        @relation(fields: [store_id], references: [id])
+  key_tags       KeyTag[]
+  pickup_codes   PickupCode[]
+  deposit_codes  DepositCode[]
+  key_movements  KeyMovement[]
+  payments       Payment[]
+  key_history    KeyHistory[]
+  admin_actions  AdminAction[]
+
+  @@map("keys")
+}
+
+// =============================================================================
+// TABLA: key_tags
+// Módulo 5 - Llavero NFC
+// Identificador físico único de cada llave. Soporta historial de reemplazos.
+// Diseñado para escalar a otros tipos de tag sin rediseño.
+// =============================================================================
+model KeyTag {
+  id          String    @id @default(uuid())
+  key_id      String
+  tag_type    TagType   @default(NFC)
+  tag_uid     String    @unique  // Identificador único del chip NFC
+  status      TagStatus @default(ACTIVE)
+
+  assigned_at DateTime  @default(now())
+  replaced_at DateTime? // Fecha en que fue reemplazado
+
+  created_at  DateTime  @default(now())
+
+  // Relaciones
+  key           Key           @relation(fields: [key_id], references: [id])
+  key_movements KeyMovement[]
+
+  @@map("key_tags")
+}
+
+// =============================================================================
+// TABLA: pickup_codes
+// Módulo 4 - Códigos de Recogida
+// Permite al propietario autorizar a alguien a recoger la llave.
+// Tipos: un solo uso (default) o reutilizable (máx. 2 activos simultáneos).
+// =============================================================================
+model PickupCode {
+  id          String           @id @default(uuid())
+  key_id      String
+  code_value  String           @unique
+  code_mode   CodeMode         @default(SINGLE_USE)
+  label_name  String?          // Nombre de quien recogerá la llave (opcional)
+  active_from DateTime?        // Hora desde la que el código es válido (opcional)
+  status      PickupCodeStatus @default(ACTIVE)
+
+  used_at      DateTime? // Cuándo fue usado
+  cancelled_at DateTime? // Cuándo fue cancelado
+
+  created_at   DateTime @default(now())
+
+  // Relaciones
+  key           Key           @relation(fields: [key_id], references: [id])
+  key_movements KeyMovement[]
+
+  @@map("pickup_codes")
+}
+
+// =============================================================================
+// TABLA: deposit_codes
+// Módulo 4 - Códigos de Depósito
+// Generado automáticamente al crear la llave. Permite el primer depósito
+// y la reasignación de NFC en caso de pérdida o daño del llavero.
+// =============================================================================
+model DepositCode {
+  id         String            @id @default(uuid())
+  key_id     String
+  code_value String            @unique
+  status     DepositCodeStatus @default(ACTIVE)
+
+  created_at DateTime  @default(now())
+  used_at    DateTime? // Cuándo fue usado
+  updated_at DateTime  @updatedAt
+
+  // Relaciones
+  key           Key           @relation(fields: [key_id], references: [id])
+  key_movements KeyMovement[]
+
+  @@map("deposit_codes")
+}
+
+// =============================================================================
+// TABLA: key_movements
+// Módulo 6 (Depósitos) + Módulo 7 (Recogidas) + Módulo 10 (Historial operativo)
+// Registro de TODOS los depósitos y recogidas de cada llave.
+// Es la fuente de verdad de la trazabilidad operativa.
+// =============================================================================
+model KeyMovement {
+  id               String         @id @default(uuid())
+  key_id           String
+  store_id         String
+  movement_type    MovementType
+  movement_method  MovementMethod
+  pickup_code_id   String?        // Nullable: solo en recogidas por código
+  deposit_code_id  String?        // Nullable: solo en depósitos por código
+  key_tag_id       String?        // Nullable: solo en operaciones NFC
+
+  movement_datetime DateTime      @default(now())
+  notes            String?        // Observaciones opcionales
+
+  created_at       DateTime       @default(now())
+
+  // Relaciones
+  key          Key          @relation(fields: [key_id], references: [id])
+  store        Store        @relation(fields: [store_id], references: [id])
+  pickup_code  PickupCode?  @relation(fields: [pickup_code_id], references: [id])
+  deposit_code DepositCode? @relation(fields: [deposit_code_id], references: [id])
+  key_tag      KeyTag?      @relation(fields: [key_tag_id], references: [id])
+  store_payout StorePayout?
+
+  @@map("key_movements")
+}
+
+// =============================================================================
+// TABLA: payments
+// Módulo 3 - Planes y Cobros
+// Registro de cada transacción procesada. No guarda datos sensibles de tarjeta,
+// solo referencias del gateway (Stripe).
+// =============================================================================
+model Payment {
+  id                String        @id @default(uuid())
+  owner_user_id     String
+  key_id            String
+  payment_type      PaymentType
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("COP")
+  payment_status    PaymentStatus @default(PENDING)
+  gateway_name      String        @default("stripe")
+  gateway_reference String?       // ID de la transacción en Stripe
+
+  paid_at     DateTime? // Cuándo se completó el pago
+  created_at  DateTime  @default(now())
+
+  // Relaciones
+  owner User @relation(fields: [owner_user_id], references: [id])
+  key   Key  @relation(fields: [key_id], references: [id])
+
+  @@map("payments")
+}
+
+// =============================================================================
+// TABLA: payment_methods
+// Módulo 3 - Método de Pago del Cliente
+// Guarda la referencia del método de pago en Stripe.
+// NUNCA guarda números de tarjeta ni datos sensibles.
+// =============================================================================
+model PaymentMethod {
+  id                        String  @id @default(uuid())
+  owner_user_id             String
+  gateway_name              String  @default("stripe")
+  gateway_customer_id       String  // Customer ID de Stripe
+  gateway_payment_method_id String  // PaymentMethod ID de Stripe
+  brand                     String? // Ej: "visa", "mastercard"
+  last4                     String? // Últimos 4 dígitos (para mostrar al usuario)
+  is_default                Boolean @default(true)
+  status                    Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relaciones
+  owner User @relation(fields: [owner_user_id], references: [id])
+
+  @@map("payment_methods")
+}
+
+// =============================================================================
+// TABLA: store_payouts
+// Módulo 8 - Pagos a Puntos Aliados
+// Controla el monto a pagar a cada tienda por cada depósito registrado.
+// Base: 3.000 COP por depósito según acuerdo comercial.
+// =============================================================================
+model StorePayout {
+  id              String       @id @default(uuid())
+  store_id        String
+  key_movement_id String       @unique // Cada movimiento genera máximo 1 payout
+  amount          Decimal      @db.Decimal(10, 2) @default(3000) // 3.000 COP
+  payout_status   PayoutStatus @default(PENDING)
+  period_month    String?      // Ej: "2026-04" para reportes mensuales
+
+  created_at DateTime  @default(now())
+  paid_at    DateTime? // Cuándo fue pagado al punto aliado
+
+  // Relaciones
+  store        Store       @relation(fields: [store_id], references: [id])
+  key_movement KeyMovement @relation(fields: [key_movement_id], references: [id])
+
+  @@map("store_payouts")
+}
+
+// =============================================================================
+// TABLA: key_history
+// Módulo 10 - Historial y Trazabilidad Completa
+// Registro de TODOS los eventos de la llave, no solo operativos.
+// El historial NUNCA se pierde, incluso si la llave es eliminada.
+// =============================================================================
+model KeyHistory {
+  id         String       @id @default(uuid())
+  key_id     String
+  event_type KeyEventType
+  old_value  String?      // Estado o valor anterior al cambio
+  new_value  String?      // Estado o valor nuevo tras el cambio
+  notes      String?      // Observaciones adicionales
+
+  created_at DateTime @default(now())
+
+  // Relaciones
+  key Key @relation(fields: [key_id], references: [id])
+
+  @@map("key_history")
+}
+
+// =============================================================================
+// TABLA: admin_actions
+// Módulo 11 - Panel Administrativo
+// Registra cada intervención manual del equipo KeyGo.
+// Ejemplos: depósito remoto, recogida remota, corrección de NFC, etc.
+// =============================================================================
+model AdminAction {
+  id          String  @id @default(uuid())
+  admin_id    String
+  key_id      String?
+  action_type String  // Ej: "FORCE_DEPOSIT", "FORCE_PICKUP", "FIX_NFC"
+  reason      String
+  notes       String?
+
+  created_at DateTime @default(now())
+
+  // Relaciones
+  admin User  @relation("AdminUser", fields: [admin_id], references: [id])
+  key   Key?  @relation(fields: [key_id], references: [id])
+
+  @@map("admin_actions")
+}
