@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="./KeyGo_logo.png" width="160" alt="KeyGo — Tus llaves, cuando las necesites">
-</p>
-
 <h1 align="center">KeyGo — Plataforma de Gestión Inteligente de Llaves</h1>
 
 <p align="center">
@@ -23,7 +19,6 @@
 ## 📋 Tabla de Contenidos
 
 - [🎯 ¿Qué es KeyGo?](#-qué-es-keygo)
-- [📅 Fases del Proyecto](#-fases-del-proyecto)
 - [✅ Fase 1 — Entregable Completo](#-fase-1--entregable-completo)
 - [🏗️ Arquitectura del Sistema](#️-arquitectura-del-sistema)
 - [📁 Estructura de Carpetas](#-estructura-de-carpetas)
@@ -47,20 +42,6 @@ KeyGo es una plataforma digital B2B2C que permite a los propietarios de llaves d
 | **OWNER** | Propietario de la llave | Crear llaves, generar códigos de acceso, consultar historial de movimientos |
 | **STORE** | Punto aliado (tienda) | Validar códigos, escanear llaveros NFC y registrar depósitos y recogidas |
 | **ADMIN** | Equipo KeyGo | Control total del sistema, corrección de incidencias e intervención manual |
-
----
-
-## 📅 Fases del Proyecto
-
-| Fase | Semana(s) | Entregable | Valor | Estado |
-|---|---|---|---|---|
-| **Fase 1** | 1 | Arquitectura base, base de datos y autenticación | $1.100.000 COP | ✅ **Completada** |
-| Fase 2 | 2 – 3 | Motor de llaves, tiendas y códigos | $1.100.000 COP | 🔜 En curso |
-| Fase 3 | 4 – 5 | Core operativo y llaveros NFC | $1.100.000 COP | ⏳ Pendiente |
-| Fase 4 | 6 – 7 | Pasarela de pagos Stripe e historial | $1.100.000 COP | ⏳ Pendiente |
-| Fase 5 | 8 – 9 | Panel administrativo y despliegue en AWS | $1.100.000 COP | ⏳ Pendiente |
-
-> **Presupuesto total:** $5.500.000 COP — Pagos contra entrega y validación de cada fase. Sin pago por adelantado.
 
 ---
 
