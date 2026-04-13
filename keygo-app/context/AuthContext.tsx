@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, LoginPayload, AuthResponse } from '../services/auth.service';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { authService, LoginPayload, RegisterPayload, AuthResponse } from '../services/auth.service';
 
 type Role = 'OWNER' | 'STORE' | 'ADMIN';
 
@@ -15,6 +15,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
 }
 
@@ -31,6 +32,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response: AuthResponse = await authService.login(payload);
       setToken(response.access_token);
       setUser(response.user);
+    } catch (error) {
+      // Re-throw so the screen can handle UI feedback with full error details
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (payload: RegisterPayload) => {
+    setIsLoading(true);
+    try {
+      await authService.register(payload);
+    } catch (error) {
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
