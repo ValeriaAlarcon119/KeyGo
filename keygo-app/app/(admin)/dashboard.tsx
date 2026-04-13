@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminDashboard() {
@@ -16,8 +17,12 @@ export default function AdminDashboard() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
     Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-  }, []);
+  }, [user]);
 
   const firstName = user?.full_name?.split(' ')[0] || 'Admin';
 

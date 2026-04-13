@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -35,6 +36,11 @@ export default function OwnerDashboard() {
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+
     const hour = new Date().getHours();
     if (hour < 12) setGreeting('Buenos días');
     else if (hour < 18) setGreeting('Buenas tardes');
@@ -44,7 +50,7 @@ export default function OwnerDashboard() {
       Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [user]);
 
   const firstName = user?.full_name?.split(' ')[0] || 'Propietario';
 
