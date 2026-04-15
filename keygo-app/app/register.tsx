@@ -201,6 +201,7 @@ export default function RegisterScreen() {
                   placeholder="María González (sin números)"
                   placeholderTextColor={COLORS.lightGray}
                   autoCapitalize="words"
+                  returnKeyType="next"
                   value={fullName}
                   onChangeText={(t) => {
                     setFullName(t);
@@ -223,6 +224,7 @@ export default function RegisterScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  returnKeyType="next"
                   value={email}
                   onChangeText={(t) => {
                     setEmail(t);
@@ -252,11 +254,13 @@ export default function RegisterScreen() {
                   placeholder="Mínimo 8 caracteres"
                   placeholderTextColor={COLORS.lightGray}
                   secureTextEntry={!showPassword}
+                  returnKeyType="send"
                   value={password}
                   onChangeText={(t) => {
                     setPassword(t);
                     if (errors.password) setErrors(e => ({ ...e, password: undefined }));
                   }}
+                  onSubmitEditing={handleRegister}
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                   <Text>{showPassword ? '🙈' : '👁️'}</Text>
@@ -328,7 +332,7 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { flexGrow: 1, alignItems: 'center', paddingTop: 60, paddingBottom: 40, paddingHorizontal: 24 },
+  scrollContent: { flexGrow: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 40, paddingHorizontal: 24 },
   
   logoSection: {
     alignItems: 'center',

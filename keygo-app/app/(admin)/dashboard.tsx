@@ -1,121 +1,287 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Animated,
+  SafeAreaView,
+  Dimensions,
   Platform,
+  Animated,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+
+const { width } = Dimensions.get('window');
+const isDesktop = width > 768;
+
+const COLORS = {
+  primary: '#1E4FA3',
+  yellow: '#F4C430',
+  textDark: '#333333',
+  textGray: '#666666',
+  background: '#F8F9FE',
+  white: '#FFFFFF',
+};
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState('keys');
+  const [showSettings, setShowSettings] = useState(false);
+  
+  const slideAnim = useRef(new Animated.Value(450)).current;
 
-  useEffect(() => {
-    if (!user) {
-      router.replace('/login');
-      return;
+  const toggleSettings = (open: boolean) => {
+    if (open) {
+      setShowSettings(true);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 450,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => setShowSettings(false));
     }
-    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-  }, [user]);
+  };
+
+  const handleLogout = () => {
+    Animated.timing(slideAnim, {
+      toValue: 450,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowSettings(false);
+      // 2. Ejecutamos el cierre de sesión real y redirigimos
+      setTimeout(async () => {
+        await logout();
+        router.replace('/');
+      }, 100);
+    });
+  };
 
   const firstName = user?.full_name?.split(' ')[0] || 'Admin';
 
+  const mockKeys = [
+    { id: '1', name: 'Llave 1', status: 'Esperando deposito', statusType: 'info' },
+    { id: '2', name: 'Llave 2', status: 'En tienda', statusType: 'success' },
+    { id: '3', name: 'Llave 3', status: 'En uso', statusType: 'warning' },
+    { id: '4', name: 'Llave 4', status: 'Depositada', statusType: 'success' },
+  ];
+
+  const mockStores = [
+    { id: '1', name: 'Tienda La Esquina', address: 'Cl. 10 #45-12', status: 'Abierto', emoji: '🏪' },
+    { id: '2', name: 'Ferretería Central', address: 'Av. 80 #12-50', status: 'Abierto', emoji: '🛠️' },
+    { id: '3', name: 'Droguería San Juan', address: 'Cra. 45 #8-20', status: 'Cerrado', emoji: '💊' },
+  ];
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <View style={styles.logoMark}>
-            <View style={styles.logoPin}><View style={styles.logoPinKey} /></View>
-          </View>
-          <Text style={styles.logoText}>
-            <Text style={styles.logoKey}>Key</Text>
-            <Text style={styles.logoGo}>Go</Text>
-          </Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      
+      {/* Side Drawer Admin */}
+      {showSettings && (
+        <View style={styles.drawerOverlay}>
+            <TouchableWithoutFeedback onPress={() => toggleSettings(false)}>
+                <View style={styles.drawerBackdrop} />
+            </TouchableWithoutFeedback>
+            
+            <Animated.View style={[styles.drawerPaper, { transform: [{ translateX: slideAnim }] }]}>
+                <View style={styles.drawerHeader}>
+                    <TouchableOpacity onPress={() => toggleSettings(false)} style={styles.closeBtn}>
+                        <Text style={{ fontSize: 20, color: COLORS.textGray }}>✕</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.drawerTitle}>Configuración Admin</Text>
+                </View>
+
+                <View style={styles.drawerProfile}>
+                    <View style={[styles.largeAvatar, {backgroundColor: '#1F2937'}]}>
+                        <Text style={styles.largeAvatarText}>{firstName[0]}</Text>
+                    </View>
+                    <Text style={styles.profileName}>{user?.full_name}</Text>
+                    <Text style={styles.profileRole}>Administrador General</Text>
+                </View>
+
+                <View style={styles.permSection}>
+                    <Text style={styles.permTitle}>CONTROL TOTAL</Text>
+                    <View style={styles.permList}>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>🌍</Text><Text style={styles.permText}>Gestión Global</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>📡</Text><Text style={styles.permText}>Acciones Remotas</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>🛡️</Text><Text style={styles.permText}>Incidencias</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>💰</Text><Text style={styles.permText}>Pagos y Cobros</Text></View>
+                    </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.logoutAction} 
+                  onPress={handleLogout}
+                  activeOpacity={0.7}
+                >
+                    <Text style={styles.logoutActionText}>Cerrar sesión</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.footerVersion}>KeyGo Admin v1.0</Text>
+            </Animated.View>
         </View>
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={styles.greetingSmall}>Panel de Control</Text>
-          <Text style={styles.greetingName}>Hola, {firstName} 🛡️</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>⚙️ Administrador</Text>
-          </View>
-        </Animated.View>
+      )}
+
+      <View style={styles.headerWrapper}>
+        <View style={styles.header}>
+            <View>
+            <Text style={styles.helloText}>Hola {firstName}</Text>
+            <Text style={styles.roleText}>Administrador General 🛡️</Text>
+            </View>
+            <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.iconBtn}>
+                <Text style={{ fontSize: 24 }}>🔔</Text>
+                <View style={styles.notifBadge}><Text style={styles.notifText}>4</Text></View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => toggleSettings(true)}>
+                <Text style={{ fontSize: 24 }}>⚙️</Text>
+            </TouchableOpacity>
+            </View>
+        </View>
+
+        <View style={styles.tabsContainer}>
+            <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('keys')}>
+                <Text style={[styles.tabText, activeTab === 'keys' ? styles.tabTextActive : styles.tabTextInactive]}>Todas las llaves</Text>
+                {activeTab === 'keys' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tab} onPress={() => setActiveTab('stores')}>
+                <Text style={[styles.tabText, activeTab === 'stores' ? styles.tabTextActive : styles.tabTextInactive]}>Puntos Aliados</Text>
+                {activeTab === 'stores' && <View style={styles.tabIndicator} />}
+            </TouchableOpacity>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Animated.View style={[styles.phaseBanner, { opacity: fadeAnim }]}>
-          <Text style={styles.phaseBannerEmoji}>🎉</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.phaseBannerTitle}>Fase 1 completada</Text>
-            <Text style={styles.phaseBannerSub}>Acceso de administrador activo y verificado</Text>
-          </View>
-          <View style={styles.phaseBadge}><Text style={styles.phaseBadgeText}>✅ Activo</Text></View>
-        </Animated.View>
-
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>🚀 Panel Administrativo completo — Fase 5</Text>
-          <Text style={styles.infoText}>
-            Desde aquí podrás gestionar todos los usuarios, llaves, puntos aliados, pagos e historial completo del sistema.
-          </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.mainContent}>
+            {activeTab === 'keys' ? (
+                mockKeys.map((key) => (
+                <View key={key.id} style={styles.keyCard}>
+                    <View style={styles.keyCardLeft}>
+                    <View style={styles.keyIconCircle}>
+                        <Text style={{ fontSize: 24, color: COLORS.primary }}>🔑</Text>
+                    </View>
+                    <View>
+                        <Text style={styles.keyName}>{key.name}</Text>
+                        <View style={[styles.statusBadge, 
+                        key.statusType === 'success' ? styles.bgSuccess : 
+                        key.statusType === 'warning' ? styles.bgWarning : styles.bgInfo]}>
+                        <Text style={[styles.statusText,
+                            key.statusType === 'success' ? styles.textSuccess : 
+                            key.statusType === 'warning' ? styles.textWarning : styles.textInfo]}>{key.status}</Text>
+                        </View>
+                    </View>
+                    </View>
+                    <TouchableOpacity><Text style={styles.moreIcon}>⋮</Text></TouchableOpacity>
+                </View>
+                ))
+            ) : (
+                mockStores.map((store) => (
+                    <View key={store.id} style={styles.keyCard}>
+                        <View style={styles.keyCardLeft}>
+                            <View style={styles.keyIconCircle}>
+                                <Text style={{ fontSize: 26 }}>{store.emoji}</Text>
+                            </View>
+                            <View>
+                                <Text style={styles.keyName}>{store.name}</Text>
+                                <Text style={{ fontSize: 13, color: COLORS.textGray }}>{store.address}</Text>
+                                <View style={[styles.statusBadge, store.status === 'Abierto' ? styles.bgSuccess : styles.bgInfo]}>
+                                    <Text style={[styles.statusText, store.status === 'Abierto' ? styles.textSuccess : styles.textInfo]}>{store.status}</Text>
+                                </View>
+                            </View>
+                        </View>
+                        <TouchableOpacity><Text style={styles.moreIcon}>⋮</Text></TouchableOpacity>
+                    </View>
+                ))
+            )}
         </View>
-
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
-        </TouchableOpacity>
-        <Text style={styles.version}>KeyGo v1.0 · Fase 1</Text>
       </ScrollView>
-    </View>
+
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.addBtn}>
+          <View style={styles.plusCircle}><Text style={styles.plusText}>+</Text></View>
+          <Text style={styles.addBtnLabel}>Agregar llave</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F0F4FF' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  headerWrapper: {
+    paddingTop: Platform.OS === 'web' ? 60 : (Platform.OS === 'ios' ? 60 : 50),
+    backgroundColor: COLORS.background, alignItems: 'center', width: '100%', zIndex: 10,
+  },
   header: {
-    backgroundColor: '#1E4FA3',
-    paddingTop: Platform.OS === 'ios' ? 60 : 48,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 25, width: '100%', maxWidth: 900, marginBottom: 20,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-  logoMark: { width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  logoPin: { width: 16, height: 20, backgroundColor: '#F4C430', borderRadius: 8, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, alignItems: 'center', justifyContent: 'center' },
-  logoPinKey: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#1E4FA3' },
-  logoText: { fontSize: 28, fontWeight: '800' },
-  logoKey: { color: '#FFFFFF' },
-  logoGo: { color: '#F4C430' },
-  greetingSmall: { color: 'rgba(255,255,255,0.7)', fontSize: 13 },
-  greetingName: { color: '#FFFFFF', fontSize: 26, fontWeight: '800', marginTop: 2 },
-  roleBadge: { marginTop: 10, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 14, paddingVertical: 5, borderRadius: 16 },
-  roleBadgeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  phaseBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
+  helloText: { fontSize: 32, fontWeight: 'bold', color: '#333' },
+  roleText: { fontSize: 14, color: COLORS.textGray, marginTop: -2 },
+  headerIcons: { flexDirection: 'row', gap: 15 },
+  iconBtn: { padding: 5 },
+  notifBadge: { position: 'absolute', top: 0, right: 0, backgroundColor: COLORS.primary, width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  notifText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  tabsContainer: { flexDirection: 'row', paddingHorizontal: 25, width: '100%', maxWidth: 900, marginBottom: 15 },
+  tab: { marginRight: 30, paddingBottom: 8 },
+  tabText: { fontSize: 18, fontWeight: 'bold' },
+  tabTextInactive: { color: COLORS.yellow },
+  tabTextActive: { color: COLORS.primary },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: COLORS.primary, borderRadius: 2 },
+  scrollContent: { paddingTop: 10, paddingBottom: 110, alignItems: 'center' },
+  mainContent: { width: '100%', maxWidth: 900, paddingHorizontal: 25 },
+  keyCard: { backgroundColor: 'white', borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10 },
+  keyCardLeft: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  keyIconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center' },
+  keyName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 4, alignSelf: 'flex-start' },
+  statusText: { fontSize: 12, fontWeight: 'bold' },
+  bgSuccess: { backgroundColor: '#E6F7ED' }, textSuccess: { color: '#22C55E' },
+  bgWarning: { backgroundColor: '#FEF9C3' }, textWarning: { color: '#EAB308' },
+  bgInfo: { backgroundColor: '#F3F4F6' }, textInfo: { color: '#6B7280' },
+  moreIcon: { fontSize: 24, color: '#999', fontWeight: 'bold' },
+  footer: { position: 'absolute', bottom: 30, left: 0, right: 0, alignItems: 'center' },
+  addBtn: { backgroundColor: COLORS.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 15, borderRadius: 18, width: '90%', maxWidth: 400 },
+  plusCircle: { width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.yellow, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  plusText: { color: COLORS.primary, fontSize: 18, fontWeight: 'bold', marginTop: -2 },
+  addBtnLabel: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  drawerOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999 },
+  drawerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  drawerPaper: {
+    position: 'absolute', top: 0, bottom: 0, right: 0, width: isDesktop ? 400 : width * 0.8,
+    backgroundColor: 'white', padding: 25, borderTopLeftRadius: 30, borderBottomLeftRadius: 30,
+    shadowColor: '#000', shadowOffset: { width: -10, height: 0 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 20,
   },
-  phaseBannerEmoji: { fontSize: 32 },
-  phaseBannerTitle: { fontSize: 16, fontWeight: '800', color: '#1F2937' },
-  phaseBannerSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
-  phaseBadge: { backgroundColor: '#DCFCE7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-  phaseBadgeText: { color: '#16A34A', fontSize: 12, fontWeight: '700' },
-  infoCard: { backgroundColor: '#EFF6FF', borderRadius: 18, padding: 20, marginBottom: 24, borderWidth: 1, borderColor: '#C7D7F9' },
-  infoTitle: { fontSize: 15, fontWeight: '800', color: '#1E4FA3', marginBottom: 8 },
-  infoText: { fontSize: 13, color: '#3B5CA8', lineHeight: 20 },
-  logoutBtn: { borderWidth: 1.5, borderColor: '#FECACA', borderRadius: 14, paddingVertical: 14, alignItems: 'center', backgroundColor: '#FFF5F5', marginBottom: 12 },
-  logoutText: { color: '#E53935', fontSize: 15, fontWeight: '700' },
-  version: { textAlign: 'center', color: '#9CA3AF', fontSize: 11 },
+  drawerHeader: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 30, marginTop: Platform.OS === 'ios' ? 40 : 10 },
+  closeBtn: { padding: 5 },
+  drawerTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark },
+  drawerProfile: { alignItems: 'center', marginBottom: 40 },
+  largeAvatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  largeAvatarText: { color: 'white', fontSize: 32, fontWeight: 'bold' },
+  profileName: { fontSize: 20, fontWeight: 'bold', color: COLORS.textDark },
+  profileRole: { fontSize: 14, color: COLORS.textGray, marginTop: 4 },
+  permSection: { marginBottom: 40 },
+  permTitle: { fontSize: 11, fontWeight: 'bold', color: '#999', letterSpacing: 1.5, marginBottom: 20 },
+  permList: { gap: 18 },
+  permRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  permEmoji: { fontSize: 20 },
+  permText: { fontSize: 14, color: '#444', fontWeight: '500' },
+  logoutAction: { 
+     backgroundColor: '#FFF5F5', padding: 18, borderRadius: 18, borderWidth: 1, borderColor: '#FECACA',
+     marginTop: 'auto', alignItems: 'center',
+  },
+  logoutActionText: { color: '#E53935', fontWeight: 'bold', fontSize: 15 },
+  footerVersion: { textAlign: 'center', marginTop: 15, color: '#BBB', fontSize: 10 },
 });

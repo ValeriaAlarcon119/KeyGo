@@ -52,9 +52,12 @@ export default function LoginScreen() {
   // Navigation listener: when user is set after login, go to dashboard
   useEffect(() => {
     if (user) {
-      if (user.role === 'OWNER') router.replace('/(owner)/dashboard');
-      else if (user.role === 'STORE') router.replace('/(store)/dashboard');
-      else if (user.role === 'ADMIN') router.replace('/(admin)/dashboard');
+      const timer = setTimeout(() => {
+        if (user.role === 'OWNER') router.replace('/(owner)/dashboard');
+        else if (user.role === 'STORE') router.replace('/(store)/dashboard');
+        else if (user.role === 'ADMIN') router.replace('/(admin)/dashboard');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 
@@ -170,6 +173,8 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   onFocus={() => setEmailFocused(true)}
                   onBlur={() => setEmailFocused(false)}
+                  onSubmitEditing={() => {}} // Optional: can move focus to password
+                  returnKeyType="next"
                 />
               </View>
             </View>
@@ -186,6 +191,8 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   onFocus={() => setPassFocused(true)}
                   onBlur={() => setPassFocused(false)}
+                  onSubmitEditing={handleLogin}
+                  returnKeyType="go"
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                   <Text>{showPassword ? '🙈' : '👁️'}</Text>
@@ -234,7 +241,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 20,
     paddingBottom: 40,
     paddingHorizontal: 24,
   },
