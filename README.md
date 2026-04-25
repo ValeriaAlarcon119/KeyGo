@@ -20,6 +20,7 @@
 
 - [🎯 ¿Qué es KeyGo?](#-qué-es-keygo)
 - [✅ Fase 1 — Entregable Completo](#-fase-1--entregable-completo)
+- [✅ Fase 2 — Entregable Completo](#-fase-2--entregable-completo)
 - [🏗️ Arquitectura del Sistema](#️-arquitectura-del-sistema)
 - [📁 Estructura de Carpetas](#-estructura-de-carpetas)
 - [🗄️ Base de Datos — 12 Tablas](#️-base-de-datos--12-tablas)
@@ -28,6 +29,7 @@
 - [📱 App Móvil — Conexión con el Servidor](#-app-móvil--conexión-con-el-servidor)
 - [🚀 Cómo Ejecutar el Proyecto](#-cómo-ejecutar-el-proyecto)
 - [🔬 Guía de Pruebas para el Cliente](#-guía-de-pruebas-para-el-cliente)
+- [📸 Demostración Visual — Fase 2](#-demostración-visual--fase-2-en-acción)
 
 ---
 
