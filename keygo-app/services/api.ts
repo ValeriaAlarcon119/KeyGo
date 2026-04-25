@@ -2,20 +2,22 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 
 // Detecta automáticamente la IP de tu máquina cuando usas Expo Go.
-// Si hostUri existe (ej: "192.168.1.10:8081"), extraemos la IP y usamos el puerto 3000 del backend.
-const hostUri = Constants.expoConfig?.hostUri;
-const debuggerHost = hostUri?.split(':')[0];
+// Probamos múltiples fuentes de la IP para mayor compatibilidad.
+const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost || Constants.experienceUrl;
+const debuggerHost = hostUri?.split(':')[0]?.replace('exp://', '');
 
-const API_URL = debuggerHost 
+// Priorizamos la IP detectada, si no, usamos localhost (para emuladores o web)
+const API_URL = debuggerHost && debuggerHost !== 'localhost'
   ? `http://${debuggerHost}:3000` 
-  : 'http://localhost:3000'; // Fallback para web o emuladores
+  : 'http://localhost:3000';
 
-console.log('Conectando a API en:', API_URL);
+console.log('[KeyGo API] Host detectado:', hostUri);
+console.log('[KeyGo API] Conectando a:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 10000,
+  timeout: 15000, // Aumentamos timeout para redes móviles lentas
 });
 
 export default api;
