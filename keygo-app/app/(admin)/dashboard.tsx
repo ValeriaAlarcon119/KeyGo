@@ -10,6 +10,7 @@ import {
   Platform,
   Animated,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
@@ -28,12 +29,27 @@ const COLORS = {
 };
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('keys');
   const [showSettings, setShowSettings] = useState(false);
   
   const slideAnim = useRef(new Animated.Value(450)).current;
+
+  // 🛡️ GUARDIA DE SEGURIDAD: Si no es admin, fuera.
+  React.useEffect(() => {
+    if (!isLoading && (!user || user.role !== 'ADMIN')) {
+      router.replace('/login');
+    }
+  }, [user, isLoading]);
+
+  if (isLoading || !user || user.role !== 'ADMIN') {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   const toggleSettings = (open: boolean) => {
     if (open) {
@@ -60,15 +76,14 @@ export default function AdminDashboard() {
       useNativeDriver: true,
     }).start(() => {
       setShowSettings(false);
-      // 2. Ejecutamos el cierre de sesión real y redirigimos
       setTimeout(async () => {
         await logout();
-        router.replace('/');
+        router.replace('/login');
       }, 100);
     });
   };
 
-  const firstName = user?.full_name?.split(' ')[0] || 'Admin';
+  const firstName = user?.full_name?.split(' ')[0] || 'Usuario';
 
   const mockKeys = [
     { id: '1', name: 'Llave 1', status: 'Esperando deposito', statusType: 'info' },
@@ -111,12 +126,14 @@ export default function AdminDashboard() {
                 </View>
 
                 <View style={styles.permSection}>
-                    <Text style={styles.permTitle}>CONTROL TOTAL</Text>
+                    <Text style={styles.permTitle}>CONTROL TOTAL (MÓDULO 11)</Text>
                     <View style={styles.permList}>
-                        <View style={styles.permRow}><Text style={styles.permEmoji}>🌍</Text><Text style={styles.permText}>Gestión Global</Text></View>
-                        <View style={styles.permRow}><Text style={styles.permEmoji}>📡</Text><Text style={styles.permText}>Acciones Remotas</Text></View>
-                        <View style={styles.permRow}><Text style={styles.permEmoji}>🛡️</Text><Text style={styles.permText}>Incidencias</Text></View>
-                        <View style={styles.permRow}><Text style={styles.permEmoji}>💰</Text><Text style={styles.permText}>Pagos y Cobros</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>🛡️</Text><Text style={styles.permText}>Gestión Global de Usuarios</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>🔑</Text><Text style={styles.permText}>Administración de Llaves</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>🏪</Text><Text style={styles.permText}>Auditoría de Puntos Aliados</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>📡</Text><Text style={styles.permText}>Depósitos/Recogidas Remotas</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>💰</Text><Text style={styles.permText}>Finanzas y Facturación</Text></View>
+                        <View style={styles.permRow}><Text style={styles.permEmoji}>⚠️</Text><Text style={styles.permText}>Resolución de Incidencias</Text></View>
                     </View>
                 </View>
 

@@ -10,7 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../context/AuthContext';
 
 export default function SplashScreen() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [activeDot, setActiveDot] = useState(0);
   
   const logoScale = useRef(new Animated.Value(0.7)).current;
@@ -27,13 +27,15 @@ export default function SplashScreen() {
       Animated.timing(dotsOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
 
-    // Dot sequence: 0 -> 1 -> 2 -> 3
+    // Dot sequence
     const dotInterval = setInterval(() => {
       setActiveDot(prev => (prev < 3 ? prev + 1 : prev));
     }, 1100);
 
-    // Navigate to appropriate screen after 5 seconds
+    // Navigate when everything is ready
     const timer = setTimeout(() => {
+      if (authLoading) return; // Wait if still loading session
+
       if (user) {
         switch (user.role) {
           case 'OWNER': router.replace('/(owner)/dashboard'); break;
@@ -44,13 +46,13 @@ export default function SplashScreen() {
       } else {
         router.replace('/login');
       }
-    }, 5000);
+    }, 3500);
 
     return () => {
       clearTimeout(timer);
       clearInterval(dotInterval);
     };
-  }, [user]);
+  }, [user, authLoading]);
 
   return (
     <View style={styles.container}>
