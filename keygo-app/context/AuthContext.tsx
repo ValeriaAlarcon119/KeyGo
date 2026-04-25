@@ -31,12 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadSession = async () => {
       try {
-        const savedToken = await AsyncStorage.getItem('token');
-        const savedUser = await AsyncStorage.getItem('user');
-        
-        if (savedToken && savedUser) {
-          setToken(savedToken);
-          setUser(JSON.parse(savedUser));
+        if (AsyncStorage) {
+          const savedToken = await AsyncStorage.getItem('token').catch(() => null);
+          const savedUser = await AsyncStorage.getItem('user').catch(() => null);
+          
+          if (savedToken && savedUser) {
+            setToken(savedToken);
+            setUser(JSON.parse(savedUser));
+          }
         }
       } catch (error) {
         console.error('Error loading session:', error);
@@ -57,8 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user);
       
       // Persist data
-      await AsyncStorage.setItem('token', response.access_token);
-      await AsyncStorage.setItem('user', JSON.stringify(response.user));
+      if (AsyncStorage) {
+        await AsyncStorage.setItem('token', response.access_token).catch(e => console.warn('AsyncStorage error', e));
+        await AsyncStorage.setItem('user', JSON.stringify(response.user)).catch(e => console.warn('AsyncStorage error', e));
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -81,8 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setUser(null);
       setToken(null);
-      await AsyncStorage.removeItem('token');
-      await AsyncStorage.removeItem('user');
+      
+      // Verificación de seguridad para evitar el crash del módulo nativo
+      if (AsyncStorage) {
+        await AsyncStorage.removeItem('token').catch(e => console.warn('AsyncStorage: error removing token', e));
+        await AsyncStorage.removeItem('user').catch(e => console.warn('AsyncStorage: error removing user', e));
+      }
     } catch (error) {
       console.error('Error during logout:', error);
     }
